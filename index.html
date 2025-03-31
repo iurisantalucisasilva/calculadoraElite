@@ -382,7 +382,11 @@
 
         <div id="dashboard" style="display: none;">
             <h2>Dashboard</h2>
-            <button onclick="saveToPDF()">Salvar como PDF</button>
+            <div class="dashboard-buttons">
+                <button onclick="saveToPDF()">Salvar como PDF</button>
+                <button id="fecharDashboardBtn">Fechar Gráficos</button>
+                <button id="novaPesquisaBtn">Nova Pesquisa</button>
+            </div>
             <table id="dataTable"></table>
             <div class="chart-container">
                 <canvas id="comparativoChart"></canvas>
@@ -424,29 +428,29 @@
     }
 
     function calcular() {
-    const credito = desformatarMoeda(document.getElementById('credito').value);
-    const parcela = desformatarMoeda(document.getElementById('parcela').value);
-    const tempo = parseInt(document.getElementById('tempo').value);
-    const comparativoPercentual = parseFloat(document.getElementById('comparativoPercentual').value) / 100;
-    const valorComparativo = desformatarMoeda(document.getElementById('valorComparativo').value);
-    const tempoComparativo = parseInt(document.getElementById('tempoComparativo').value);
+        const credito = desformatarMoeda(document.getElementById('credito').value);
+        const parcela = desformatarMoeda(document.getElementById('parcela').value);
+        const tempo = parseInt(document.getElementById('tempo').value);
+        const comparativoPercentual = parseFloat(document.getElementById('comparativoPercentual').value) / 100;
+        const valorComparativo = desformatarMoeda(document.getElementById('valorComparativo').value);
+        const tempoComparativo = parseInt(document.getElementById('tempoComparativo').value);
 
-    // Verificar se os campos estão preenchidos
-    if (!credito || !parcela || !tempo || isNaN(comparativoPercentual) || !valorComparativo || !tempoComparativo) {
-        Swal.fire({
-            title: 'Erro!',
-            text: 'Por favor, preencha todos os campos.',
-            icon: 'error',
-            confirmButtonText: 'OK'
-        });
-        return;
-    }
+        // Verificar se os campos estão preenchidos
+        if (!credito || !parcela || !tempo || isNaN(comparativoPercentual) || !valorComparativo || !tempoComparativo) {
+            Swal.fire({
+                title: 'Erro!',
+                text: 'Por favor, preencha todos os campos.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+            return;
+        }
 
-    let creditoAtual = credito;
-    let parcelaAtual = parcela;
-    let resultado = '<h2>Resultados:</h2>';
+        let creditoAtual = credito;
+        let parcelaAtual = parcela;
+        let resultado = '<h2>Resultados:</h2>';
 
-    const periodos = [12, 24, 36, 48, 60];
+        const periodos = [12, 24, 36, 48, 60];
         const resultadosPeriodos = [];
 
         for (let i = 0; i < periodos.length; i++) {
@@ -473,100 +477,120 @@
                 }
             }
 
-        const creditoContemplado = creditoAtual * 0.7;
-        const valorVenda = creditoContemplado * 0.2;
-        const lucro = valorVenda - valorInvestidoTotal;
+            const creditoContemplado = creditoAtual * 0.7;
+            const valorVenda = creditoContemplado * 0.2;
+            const lucro = valorVenda - valorInvestidoTotal;
 
-        resultadosPeriodos.push({
-            mes,
-            creditoAtual,
-            parcelaAtual,
-            valorInvestidoTotal,
-            creditoContemplado,
-            valorVenda,
-            lucro
-        });
+            resultadosPeriodos.push({
+                mes,
+                creditoAtual,
+                parcelaAtual,
+                valorInvestidoTotal,
+                creditoContemplado,
+                valorVenda,
+                lucro
+            });
 
+            resultado += `
+                <h3>${mes} meses:</h3>
+                <p>Crédito: ${formatarValor(creditoAtual)}</p>
+                <p>Parcela: ${formatarValor(parcelaAtual)}</p>
+                <p>Valor Investido: ${formatarValor(valorInvestidoTotal)}</p>
+                <p>Crédito Contemplado: ${formatarValor(creditoContemplado)}</p>
+                <p>Valor de Venda: ${formatarValor(valorVenda)}</p>
+                <p>Lucro: ${formatarValor(lucro)}</p>
+                <hr>
+            `;
+        }
+
+        // Cálculo do comparativo
+        const valorInvestidoComparativo = valorComparativo * tempoComparativo;
+        const taxaMensal = comparativoPercentual / 12;
+        let valorFinalComparativo = valorComparativo;
+        
+        for (let i = 0; i < tempoComparativo; i++) {
+            valorFinalComparativo *= (1 + taxaMensal);
+            valorFinalComparativo += valorComparativo;
+        }
+        
+        const rendimentoComparativo = valorFinalComparativo - valorInvestidoComparativo;
+        
         resultado += `
-            <h3>${mes} meses:</h3>
-            <p>Crédito: ${formatarValor(creditoAtual)}</p>
-            <p>Parcela: ${formatarValor(parcelaAtual)}</p>
-            <p>Valor Investido: ${formatarValor(valorInvestidoTotal)}</p>
-            <p>Crédito Contemplado: ${formatarValor(creditoContemplado)}</p>
-            <p>Valor de Venda: ${formatarValor(valorVenda)}</p>
-            <p>Lucro: ${formatarValor(lucro)}</p>
+            <h3>Comparativo:</h3>
+            <p>Valor Mensal Investido: ${formatarValor(valorComparativo)}</p>
+            <p>Tempo: ${tempoComparativo} meses</p>
+            <p>Valor Total Investido: ${formatarValor(valorInvestidoComparativo)}</p>
+            <p>Rendimento: ${formatarValor(rendimentoComparativo)}</p>
+            <p>Valor Final: ${formatarValor(valorFinalComparativo)}</p>
             <hr>
         `;
+
+        // Exibir o SweetAlert com os resultados
+        Swal.fire({
+            title: 'Cálculo Realizado!',
+            html: resultado,
+            icon: 'success',
+            confirmButtonText: 'OK',
+            width: '80%',
+            scrollbarPadding: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('result').innerHTML = resultado;
+                document.getElementById('dashboard').style.display = 'block';
+
+                const ultimoPeriodo = resultadosPeriodos[resultadosPeriodos.length - 1];
+
+                atualizarGraficos({
+                    tipo: 'Consórcio',
+                    valorInvestido: ultimoPeriodo.valorInvestidoTotal,
+                    lucro: ultimoPeriodo.lucro
+                }, {
+                    tipo: 'Outros Investimentos',
+                    valorInvestido: ultimoPeriodo.valorInvestidoTotal,
+                    lucro: ultimoPeriodo.valorInvestidoTotal * 0.05
+                }, {
+                    tipo: 'Investimento Comparativo',
+                    valorInvestido: valorInvestidoComparativo,
+                    lucro: rendimentoComparativo
+                });
+
+                atualizarTabela(resultadosPeriodos, {
+                    valorInicial: valorComparativo,
+                    tempoMeses: tempoComparativo,
+                    taxaAnual: comparativoPercentual,
+                    rendimento: rendimentoComparativo,
+                    valorFinal: valorFinalComparativo
+                });
+
+                criarGraficoDetalhado(resultadosPeriodos, {
+                    valorInicial: valorComparativo,
+                    tempoMeses: tempoComparativo,
+                    rendimento: rendimentoComparativo,
+                    valorFinal: valorFinalComparativo
+                });
+            }
+        });
     }
 
-    // Cálculo do comparativo
-    const valorInvestidoComparativo = valorComparativo * tempoComparativo;
-    const taxaMensal = comparativoPercentual / 12;
-    let valorFinalComparativo = valorComparativo;
-    
-    for (let i = 0; i < tempoComparativo; i++) {
-        valorFinalComparativo *= (1 + taxaMensal);
-        valorFinalComparativo += valorComparativo;
+    function limparPesquisa() {
+        // Limpar todos os campos de entrada
+        document.getElementById('credito').value = '';
+        document.getElementById('parcela').value = '';
+        document.getElementById('tempo').value = '12';
+        document.getElementById('comparativoPercentual').value = '';
+        document.getElementById('valorComparativo').value = '';
+        document.getElementById('tempoComparativo').value = '';
+
+        // Limpar resultados e esconder o dashboard
+        document.getElementById('result').innerHTML = '';
+        document.getElementById('dashboard').style.display = 'none';
     }
-    
-    const rendimentoComparativo = valorFinalComparativo - valorInvestidoComparativo;
-    
-    resultado += `
-        <h3>Comparativo:</h3>
-        <p>Valor Mensal Investido: ${formatarValor(valorComparativo)}</p>
-        <p>Tempo: ${tempoComparativo} meses</p>
-        <p>Valor Total Investido: ${formatarValor(valorInvestidoComparativo)}</p>
-        <p>Rendimento: ${formatarValor(rendimentoComparativo)}</p>
-        <p>Valor Final: ${formatarValor(valorFinalComparativo)}</p>
-        <hr>
-    `;
 
-    // Exibir o SweetAlert com os resultados
-    Swal.fire({
-        title: 'Cálculo Realizado!',
-        html: resultado,
-        icon: 'success',
-        confirmButtonText: 'OK',
-        width: '80%',
-        scrollbarPadding: false
-    }).then((result) => {
-        if (result.isConfirmed) {
-            document.getElementById('result').innerHTML = resultado;
-            document.getElementById('dashboard').style.display = 'block';
+    function fecharDashboard() {
+        // Esconder o dashboard
+        document.getElementById('dashboard').style.display = 'none';
+    }
 
-            const ultimoPeriodo = resultadosPeriodos[resultadosPeriodos.length - 1];
-
-            atualizarGraficos({
-                tipo: 'Consórcio',
-                valorInvestido: ultimoPeriodo.valorInvestidoTotal,
-                lucro: ultimoPeriodo.lucro
-            }, {
-                tipo: 'Outros Investimentos',
-                valorInvestido: ultimoPeriodo.valorInvestidoTotal,
-                lucro: ultimoPeriodo.valorInvestidoTotal * 0.05
-            }, {
-                tipo: 'Investimento Comparativo',
-                valorInvestido: valorInvestidoComparativo,
-                lucro: rendimentoComparativo
-            });
-
-            atualizarTabela(resultadosPeriodos, {
-                valorInicial: valorComparativo,
-                tempoMeses: tempoComparativo,
-                taxaAnual: comparativoPercentual,
-                rendimento: rendimentoComparativo,
-                valorFinal: valorFinalComparativo
-            });
-
-            criarGraficoDetalhado(resultadosPeriodos, {
-                valorInicial: valorComparativo,
-                tempoMeses: tempoComparativo,
-                rendimento: rendimentoComparativo,
-                valorFinal: valorFinalComparativo
-            });
-        }
-    });
-}
     // Função para atualizar a tabela de dados
     function atualizarTabela(resultados, resultadoComparativo) {
         const table = document.getElementById('dataTable');
@@ -595,47 +619,7 @@
                 </tr>
             `;
         });
-        function limparPesquisa() {
-    // Limpar todos os campos de entrada
-    document.getElementById('credito').value = '';
-    document.getElementById('parcela').value = '';
-    document.getElementById('tempo').value = '';
-    document.getElementById('comparativoPercentual').value = '';
-    document.getElementById('valorComparativo').value = '';
-    document.getElementById('tempoComparativo').value = '';
 
-    // Limpar resultados e esconder o dashboard
-    document.getElementById('result').innerHTML = '';
-    document.getElementById('dashboard').style.display = 'none';
-
-    // Esconder o botão de fechar dashboard
-    document.getElementById('fecharDashboardBtn').style.display = 'none';
-}
-
-function fecharDashboard() {
-    // Esconder o dashboard
-    document.getElementById('dashboard').style.display = 'none';
-
-    // Esconder o botão de fechar dashboard
-    document.getElementById('fecharDashboardBtn').style.display = 'none';
-}
-
-// Modificar a função calcular para mostrar o botão de fechar dashboard
-function calcular() {
-    // ... (código existente da função calcular)
-
-    // Após exibir o SweetAlert e atualizar o dashboard
-    Swal.fire({
-        // ... (configurações existentes do SweetAlert)
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // ... (código existente para atualizar o dashboard)
-
-            // Mostrar o botão de fechar dashboard
-            document.getElementById('fecharDashboardBtn').style.display = 'inline-block';
-        }
-    });
-}
         // Adicionar linha para o investimento comparativo
         html += `
             <tr>
@@ -732,8 +716,8 @@ function calcular() {
         criarGraficoPizza(resultadoComparativo, 'comparativoPizzaChart');
     }
 
-      // Função para criar gráfico comparativo
-      function criarGraficoComparativo(resultadoConsorcio, resultadoOutros, resultadoComparativo) {
+    // Função para criar gráfico comparativo
+    function criarGraficoComparativo(resultadoConsorcio, resultadoOutros, resultadoComparativo) {
         const ctx = document.getElementById('comparativoChart').getContext('2d');
         new Chart(ctx, {
             type: 'bar',
@@ -765,7 +749,6 @@ function calcular() {
             }
         });
     }
-
     // Função para criar gráfico de pizza
     function criarGraficoPizza(data, elementId) {
         const ctx = document.getElementById(elementId).getContext('2d');
@@ -861,11 +844,13 @@ function calcular() {
     });
 
     document.getElementById('calcularButton').addEventListener('click', calcular);
+    document.getElementById('novaPesquisaBtn').addEventListener('click', limparPesquisa);
+    document.getElementById('fecharDashboardBtn').addEventListener('click', fecharDashboard);
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', function() {
         // Qualquer inicialização adicional pode ser colocada aqui
     });
-    </script>
+</script>
 </body>
 </html>
