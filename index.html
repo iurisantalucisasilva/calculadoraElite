@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@5/dark.css">
     <style>
@@ -363,29 +362,27 @@
                 <option value="12">12 meses</option>
                 <option value="24">24 meses</option>
                 <option value="36">36 meses</option>
-                <option value="47">47 meses</option>
+                <option value="48">48 meses</option>
+                <option value="60">60 meses</option>
             </select>
-            <button id="limparPesquisa" onclick="limparPesquisa()">Limpar Pesquisa</button>
-            <button type="button" id="calcularButton">Calcular</button>
 
+            <label for="comparativoPercentual">Comparativo (% anual):</label>
+            <input type="number" id="comparativoPercentual" step="0.01" required placeholder="0.00%">
+
+            <label for="valorComparativo">Valor Comparativo:</label>
+            <input type="text" id="valorComparativo" required placeholder="R$ 0,00">
+
+            <label for="tempoComparativo">Tempo Comparativo em Meses:</label>
+            <input type="number" id="tempoComparativo" required placeholder="0">
+
+            <button type="button" id="calcularButton">Calcular</button>
         </form>
 
         <div id="result"></div>
-        <div id="result" class="glass fade-in-up">
-            <!-- Conteúdo do resultado -->
-        </div>
-        <div class="container fade-in-up glass animated-bg">
-            <!-- Conteúdo principal -->
-        </div>
 
         <div id="dashboard" style="display: none;">
-            <div class="dashboard-header">
-                <h2>Dashboard</h2>
-                <div class="dashboard-buttons">
-                    <button onclick="closeDashboard()">Fechar Dashboard</button>
-                    <button onclick="saveToPDF()" class="btn-secondary">Salvar como PDF</button>
-                </div>
-            </div>
+            <h2>Dashboard</h2>
+            <button onclick="saveToPDF()">Salvar como PDF</button>
             <table id="dataTable"></table>
             <div class="chart-container">
                 <canvas id="comparativoChart"></canvas>
@@ -399,49 +396,48 @@
             <div class="chart-container">
                 <canvas id="outrosPizzaChart"></canvas>
             </div>
+            <div class="chart-container">
+                <canvas id="comparativoPizzaChart"></canvas>
+            </div>
         </div>
     </div>
-    <script src="script.js"></script>
-</body>
-<script>
-// Função para formatar o valor monetário no input
-function formatarMoeda(input) {
-    let valor = input.value.replace(/\D/g, '');
-    valor = (valor / 100).toFixed(2) + '';
-    valor = valor.replace(".", ",");
-    valor = valor.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
-    valor = valor.replace(/(\d)(\d{3}),/g, "$1.$2,");
-    input.value = 'R$ ' + valor;
-}
 
-// Função para desformatar o valor monetário para cálculos
-function desformatarMoeda(valor) {
-    return parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.'));
-}
+    <script>
+    // Função para formatar o valor monetário no input
+    function formatarMoeda(input) {
+        let valor = input.value.replace(/\D/g, '');
+        valor = (valor / 100).toFixed(2) + '';
+        valor = valor.replace(".", ",");
+        valor = valor.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+        valor = valor.replace(/(\d)(\d{3}),/g, "$1.$2,");
+        input.value = 'R$ ' + valor;
+    }
 
-// Função para formatar valor para exibição
-function formatarValor(valor) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-}
+    // Função para desformatar o valor monetário para cálculos
+    function desformatarMoeda(valor) {
+        return parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.'));
+    }
 
-// Função principal de cálculo
-function calcular() {
+    // Função para formatar valor para exibição
+    function formatarValor(valor) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+    }
+
+    function calcular() {
     const credito = desformatarMoeda(document.getElementById('credito').value);
     const parcela = desformatarMoeda(document.getElementById('parcela').value);
     const tempo = parseInt(document.getElementById('tempo').value);
+    const comparativoPercentual = parseFloat(document.getElementById('comparativoPercentual').value) / 100;
+    const valorComparativo = desformatarMoeda(document.getElementById('valorComparativo').value);
+    const tempoComparativo = parseInt(document.getElementById('tempoComparativo').value);
 
     // Verificar se os campos estão preenchidos
-    if (!credito || !parcela || !tempo) {
+    if (!credito || !parcela || !tempo || isNaN(comparativoPercentual) || !valorComparativo || !tempoComparativo) {
         Swal.fire({
             title: 'Erro!',
             text: 'Por favor, preencha todos os campos.',
             icon: 'error',
-            confirmButtonText: 'OK',
-            customClass: {
-                popup: 'glass animated-bg',
-                title: 'swal-title',
-                confirmButton: 'swal-button'
-            }
+            confirmButtonText: 'OK'
         });
         return;
     }
@@ -450,30 +446,32 @@ function calcular() {
     let parcelaAtual = parcela;
     let resultado = '<h2>Resultados:</h2>';
 
-    const periodos = [12, 24, 36, 47];
-    const resultadosPeriodos = [];
+    const periodos = [12, 24, 36, 48, 60];
+        const resultadosPeriodos = [];
 
-    for (let i = 0; i < periodos.length; i++) {
-        const mes = periodos[i];
-        if (mes > tempo) break;
+        for (let i = 0; i < periodos.length; i++) {
+            const mes = periodos[i];
+            if (mes > tempo) break;
 
-        if (i > 0) {
-            creditoAtual *= 1.1;
-            parcelaAtual *= 1.1;
-        }
-
-        let valorInvestidoTotal = 0;
-        for (let j = 1; j <= mes; j++) {
-            if (j <= 12) {
-                valorInvestidoTotal += parcela;
-            } else if (j <= 24) {
-                valorInvestidoTotal += parcela * 1.1;
-            } else if (j <= 36) {
-                valorInvestidoTotal += parcela * 1.1 * 1.1;
-            } else {
-                valorInvestidoTotal += parcela * 1.1 * 1.1 * 1.1;
+            if (i > 0) {
+                creditoAtual *= 1.1;
+                parcelaAtual *= 1.1;
             }
-        }
+
+            let valorInvestidoTotal = 0;
+            for (let j = 1; j <= mes; j++) {
+                if (j <= 12) {
+                    valorInvestidoTotal += parcela;
+                } else if (j <= 24) {
+                    valorInvestidoTotal += parcela * 1.1;
+                } else if (j <= 36) {
+                    valorInvestidoTotal += parcela * 1.1 * 1.1;
+                } else if (j <= 48) {
+                    valorInvestidoTotal += parcela * 1.1 * 1.1 * 1.1;
+                } else {
+                    valorInvestidoTotal += parcela * 1.1 * 1.1 * 1.1 * 1.1;
+                }
+            }
 
         const creditoContemplado = creditoAtual * 0.7;
         const valorVenda = creditoContemplado * 0.2;
@@ -501,17 +499,34 @@ function calcular() {
         `;
     }
 
+    // Cálculo do comparativo
+    const valorInvestidoComparativo = valorComparativo * tempoComparativo;
+    const taxaMensal = comparativoPercentual / 12;
+    let valorFinalComparativo = valorComparativo;
+    
+    for (let i = 0; i < tempoComparativo; i++) {
+        valorFinalComparativo *= (1 + taxaMensal);
+        valorFinalComparativo += valorComparativo;
+    }
+    
+    const rendimentoComparativo = valorFinalComparativo - valorInvestidoComparativo;
+    
+    resultado += `
+        <h3>Comparativo:</h3>
+        <p>Valor Mensal Investido: ${formatarValor(valorComparativo)}</p>
+        <p>Tempo: ${tempoComparativo} meses</p>
+        <p>Valor Total Investido: ${formatarValor(valorInvestidoComparativo)}</p>
+        <p>Rendimento: ${formatarValor(rendimentoComparativo)}</p>
+        <p>Valor Final: ${formatarValor(valorFinalComparativo)}</p>
+        <hr>
+    `;
+
     // Exibir o SweetAlert com os resultados
     Swal.fire({
         title: 'Cálculo Realizado!',
         html: resultado,
         icon: 'success',
         confirmButtonText: 'OK',
-        customClass: {
-            popup: 'glass animated-bg',
-            title: 'swal-title',
-            confirmButton: 'swal-button'
-        },
         width: '80%',
         scrollbarPadding: false
     }).then((result) => {
@@ -529,299 +544,328 @@ function calcular() {
                 tipo: 'Outros Investimentos',
                 valorInvestido: ultimoPeriodo.valorInvestidoTotal,
                 lucro: ultimoPeriodo.valorInvestidoTotal * 0.05
+            }, {
+                tipo: 'Investimento Comparativo',
+                valorInvestido: valorInvestidoComparativo,
+                lucro: rendimentoComparativo
             });
 
-            atualizarTabela(resultadosPeriodos);
-            criarGraficoDetalhado(resultadosPeriodos);
+            atualizarTabela(resultadosPeriodos, {
+                valorInicial: valorComparativo,
+                tempoMeses: tempoComparativo,
+                taxaAnual: comparativoPercentual,
+                rendimento: rendimentoComparativo,
+                valorFinal: valorFinalComparativo
+            });
+
+            criarGraficoDetalhado(resultadosPeriodos, {
+                valorInicial: valorComparativo,
+                tempoMeses: tempoComparativo,
+                rendimento: rendimentoComparativo,
+                valorFinal: valorFinalComparativo
+            });
         }
     });
 }
-
-// Função para atualizar a tabela de dados
-function atualizarTabela(resultados) {
-    const table = document.getElementById('dataTable');
-    let html = `
-        <tr>
-            <th>Período</th>
-            <th>Crédito</th>
-            <th>Parcela</th>
-            <th>Valor Investido</th>
-            <th>Crédito Contemplado</th>
-            <th>Valor de Venda</th>
-            <th>Lucro</th>
-        </tr>
-    `;
-
-    resultados.forEach(r => {
-        html += `
+    // Função para atualizar a tabela de dados
+    function atualizarTabela(resultados, resultadoComparativo) {
+        const table = document.getElementById('dataTable');
+        let html = `
             <tr>
-                <td>${r.mes} meses</td>
-                <td>${formatarValor(r.creditoAtual)}</td>
-                <td>${formatarValor(r.parcelaAtual)}</td>
-                <td>${formatarValor(r.valorInvestidoTotal)}</td>
-                <td>${formatarValor(r.creditoContemplado)}</td>
-                <td>${formatarValor(r.valorVenda)}</td>
-                <td>${formatarValor(r.lucro)}</td>
+                <th>Período</th>
+                <th>Crédito</th>
+                <th>Parcela</th>
+                <th>Valor Investido</th>
+                <th>Crédito Contemplado</th>
+                <th>Valor de Venda</th>
+                <th>Lucro</th>
             </tr>
         `;
-    });
 
-    table.innerHTML = html;
-}
-
-// Função para fechar o dashboard
-function closeDashboard() {
-    document.getElementById('dashboard').style.display = 'none';
-}
-function limparPesquisa() {
-    // Limpar campos de entrada
+        resultados.forEach(r => {
+            html += `
+                <tr>
+                    <td>${r.mes} meses</td>
+                    <td>${formatarValor(r.creditoAtual)}</td>
+                    <td>${formatarValor(r.parcelaAtual)}</td>
+                    <td>${formatarValor(r.valorInvestidoTotal)}</td>
+                    <td>${formatarValor(r.creditoContemplado)}</td>
+                    <td>${formatarValor(r.valorVenda)}</td>
+                    <td>${formatarValor(r.lucro)}</td>
+                </tr>
+            `;
+        });
+        function limparPesquisa() {
+    // Limpar todos os campos de entrada
     document.getElementById('credito').value = '';
     document.getElementById('parcela').value = '';
     document.getElementById('tempo').value = '';
+    document.getElementById('comparativoPercentual').value = '';
+    document.getElementById('valorComparativo').value = '';
+    document.getElementById('tempoComparativo').value = '';
 
-    // Limpar resultados
+    // Limpar resultados e esconder o dashboard
     document.getElementById('result').innerHTML = '';
     document.getElementById('dashboard').style.display = 'none';
 
-    // Limpar tabela
-    const table = document.getElementById('dataTable');
-    if (table) {
-        table.innerHTML = '<thead><tr><th>Período</th><th>Crédito</th><th>Parcela</th><th>Valor Investido</th><th>Crédito Contemplado</th><th>Valor de Venda</th><th>Lucro</th></tr></thead><tbody></tbody>';
-    }
-
-    // Limpar gráficos
-    limparGraficos();
-
-    // Remover PDF gerado (se houver)
-    URL.revokeObjectURL(document.getElementById('pdfLink').href);
-    document.getElementById('pdfLink').style.display = 'none';
+    // Esconder o botão de fechar dashboard
+    document.getElementById('fecharDashboardBtn').style.display = 'none';
 }
 
-function limparGraficos() {
-    // Destruir gráficos existentes
-    if (window.comparativoChart) {
-        window.comparativoChart.destroy();
-    }
-    if (window.detailedChart) {
-        window.detailedChart.destroy();
-    }
-    if (window.consorcioPizzaChart) {
-        window.consorcioPizzaChart.destroy();
-    }
-    if (window.outrosPizzaChart) {
-        window.outrosPizzaChart.destroy();
-    }
+function fecharDashboard() {
+    // Esconder o dashboard
+    document.getElementById('dashboard').style.display = 'none';
 
-    // Limpar canvas
-    const canvasIds = ['comparativoChart', 'detailedChart', 'consorcioPizzaChart', 'outrosPizzaChart'];
-    canvasIds.forEach(id => {
-        const canvas = document.getElementById(id);
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    });
+    // Esconder o botão de fechar dashboard
+    document.getElementById('fecharDashboardBtn').style.display = 'none';
 }
-// Função para criar o gráfico comparativo
-function criarGraficoComparativo(resultadoConsorcio, resultadoOutros) {
-    const ctx = document.getElementById('comparativoChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Valor Investido', 'Lucro'],
-            datasets: [
-                {
-                    label: 'Consórcio',
-                    data: [resultadoConsorcio.valorInvestido, resultadoConsorcio.lucro],
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)'
-                },
-                {
-                    label: 'Outros Investimentos',
-                    data: [resultadoOutros.valorInvestido, resultadoOutros.lucro],
-                    backgroundColor: 'rgba(153, 102, 255, 0.6)'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
+
+// Modificar a função calcular para mostrar o botão de fechar dashboard
+function calcular() {
+    // ... (código existente da função calcular)
+
+    // Após exibir o SweetAlert e atualizar o dashboard
+    Swal.fire({
+        // ... (configurações existentes do SweetAlert)
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // ... (código existente para atualizar o dashboard)
+
+            // Mostrar o botão de fechar dashboard
+            document.getElementById('fecharDashboardBtn').style.display = 'inline-block';
         }
     });
 }
+        // Adicionar linha para o investimento comparativo
+        html += `
+            <tr>
+                <td>${resultadoComparativo.tempoMeses} meses (Comparativo)</td>
+                <td>-</td>
+                <td>-</td>
+                <td>${formatarValor(resultadoComparativo.valorInicial)}</td>
+                <td>-</td>
+                <td>${formatarValor(resultadoComparativo.valorFinal)}</td>
+                <td>${formatarValor(resultadoComparativo.rendimento)}</td>
+            </tr>
+        `;
 
-// Função para criar gráfico de pizza
-function criarGraficoPizza(data, elementId) {
-    const ctx = document.getElementById(elementId).getContext('2d');
-    new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: ['Valor Investido', 'Lucro/Rendimento'],
-            datasets: [{
-                data: [data.valorInvestido, data.lucro],
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.8)',
-                    'rgba(54, 162, 235, 0.8)'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                title: {
-                    display: true,
-                    text: data.tipo
-                }
-            }
-        }
-    });
-}
+        table.innerHTML = html;
+    }
 
-// Função para criar gráfico detalhado
-function criarGraficoDetalhado(resultados) {
-    const ctx = document.getElementById('detailedChart').getContext('2d');
-    const labels = resultados.map(r => `${r.mes} meses`);
-    const datasets = [
-        {
-            label: 'Crédito',
-            data: resultados.map(r => r.creditoAtual),
-            backgroundColor: 'rgba(255, 99, 132, 0.6)',
-        },
-        {
-            label: 'Parcela',
-            data: resultados.map(r => r.parcelaAtual),
-            backgroundColor: 'rgba(54, 162, 235, 0.6)',
-        },
-        {
-            label: 'Valor Investido',
-            data: resultados.map(r => r.valorInvestidoTotal),
-            backgroundColor: 'rgba(255, 206, 86, 0.6)',
-        },
-        {
-            label: 'Crédito Contemplado',
-            data: resultados.map(r => r.creditoContemplado),
-            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-        },
-        {
-            label: 'Valor de Venda',
-            data: resultados.map(r => r.valorVenda),
-            backgroundColor: 'rgba(153, 102, 255, 0.6)',
-        },
-        {
-            label: 'Lucro',
-            data: resultados.map(r => r.lucro),
-            backgroundColor: 'rgba(255, 159, 64, 0.6)',
-        }
-    ];
+    // Função para criar gráfico detalhado
+    function criarGraficoDetalhado(resultados, resultadoComparativo) {
+        const ctx = document.getElementById('detailedChart').getContext('2d');
+        const labels = resultados.map(r => `${r.mes} meses`);
+        labels.push(`${resultadoComparativo.tempoMeses} meses (Comparativo)`);
 
-    new Chart(ctx, {
-        type: 'bar',
-        data: { labels, datasets },
-        options: {
-            responsive: true,
-            scales: {
-                x: { stacked: true },
-                y: { stacked: true }
+        const datasets = [
+            {
+                label: 'Crédito',
+                data: [...resultados.map(r => r.creditoAtual), null],
+                backgroundColor: 'rgba(255, 99, 132, 0.6)',
             },
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Análise Detalhada do Consórcio'
+            {
+                label: 'Parcela',
+                data: [...resultados.map(r => r.parcelaAtual), null],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+            },
+            {
+                label: 'Valor Investido',
+                data: [...resultados.map(r => r.valorInvestidoTotal), resultadoComparativo.valorInicial],
+                backgroundColor: 'rgba(255, 206, 86, 0.6)',
+            },
+            {
+                label: 'Crédito Contemplado',
+                data: [...resultados.map(r => r.creditoContemplado), null],
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            },
+            {
+                label: 'Valor de Venda/Final',
+                data: [...resultados.map(r => r.valorVenda), resultadoComparativo.valorFinal],
+                backgroundColor: 'rgba(153, 102, 255, 0.6)',
+            },
+            {
+                label: 'Lucro/Rendimento',
+                data: [...resultados.map(r => r.lucro), resultadoComparativo.rendimento],
+                backgroundColor: 'rgba(255, 159, 64, 0.6)',
+            }
+        ];
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true }
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Análise Detalhada do Consórcio e Investimento Comparativo'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                                }
+                                return label;
                             }
-                            if (context.parsed.y !== null) {
-                                label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
-                            }
-                            return label;
                         }
                     }
                 }
             }
-        }
-    });
-}
+        });
+    }
 
-// Função para atualizar todos os gráficos
-function atualizarGraficos(resultadoConsorcio, resultadoOutros) {
-    criarGraficoComparativo(resultadoConsorcio, resultadoOutros);
-    criarGraficoPizza(resultadoConsorcio, 'consorcioPizzaChart');
-    criarGraficoPizza(resultadoOutros, 'outrosPizzaChart');
-}
+    // Função para atualizar todos os gráficos
+    function atualizarGraficos(resultadoConsorcio, resultadoOutros, resultadoComparativo) {
+        criarGraficoComparativo(resultadoConsorcio, resultadoOutros, resultadoComparativo);
+        criarGraficoPizza(resultadoConsorcio, 'consorcioPizzaChart');
+        criarGraficoPizza(resultadoOutros, 'outrosPizzaChart');
+        criarGraficoPizza(resultadoComparativo, 'comparativoPizzaChart');
+    }
 
-// Função para salvar o relatório em PDF
-function saveToPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+      // Função para criar gráfico comparativo
+      function criarGraficoComparativo(resultadoConsorcio, resultadoOutros, resultadoComparativo) {
+        const ctx = document.getElementById('comparativoChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Consórcio', 'Outros Investimentos', 'Investimento Comparativo'],
+                datasets: [{
+                    label: 'Valor Investido',
+                    data: [resultadoConsorcio.valorInvestido, resultadoOutros.valorInvestido, resultadoComparativo.valorInvestido],
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                }, {
+                    label: 'Lucro',
+                    data: [resultadoConsorcio.lucro, resultadoOutros.lucro, resultadoComparativo.lucro],
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Comparativo de Investimentos'
+                    }
+                }
+            }
+        });
+    }
 
-    // Título
-    doc.setFontSize(12);
-    doc.text('Relatório de Comparação de Investimentos', 10, 10);
+    // Função para criar gráfico de pizza
+    function criarGraficoPizza(data, elementId) {
+        const ctx = document.getElementById(elementId).getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Valor Investido', 'Lucro/Rendimento'],
+                datasets: [{
+                    data: [data.valorInvestido, data.lucro],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: data.tipo
+                    }
+                }
+            }
+        });
+    }
 
-    // Tabela
-    const table = document.getElementById('dataTable');
-    doc.autoTable({ 
-        html: table, 
-        startY: 15, 
-        theme: 'grid', 
-        styles: { fontSize: 6 },
-        columnStyles: { 0: { cellWidth: 30 } },
-        margin: { left: 10, right: 10 },
-    });
+    // Função para salvar o relatório em PDF
+    function saveToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
 
-    let yOffset = doc.lastAutoTable.finalY + 5;
+        // Título
+        doc.setFontSize(12);
+        doc.text('Relatório de Comparação de Investimentos', 10, 10);
 
-    // Gráficos
-    const charts = ['comparativoChart', 'detailedChart', 'consorcioPizzaChart', 'outrosPizzaChart'];
-    const chartWidth = 90;
-    const chartHeight = 45;
+        // Tabela
+        const table = document.getElementById('dataTable');
+        doc.autoTable({ 
+            html: table, 
+            startY: 15, 
+            theme: 'grid', 
+            styles: { fontSize: 6 },
+            columnStyles: { 0: { cellWidth: 30 } },
+            margin: { left: 10, right: 10 },
+        });
 
-    charts.forEach((chartId, index) => {
-        const canvas = document.getElementById(chartId);
-        const imgData = canvas.toDataURL('image/png');
+        let yOffset = doc.lastAutoTable.finalY + 5;
+
+        // Gráficos
+        const charts = ['comparativoChart', 'detailedChart', 'consorcioPizzaChart', 'outrosPizzaChart', 'comparativoPizzaChart'];
+        const chartWidth = 90;
+        const chartHeight = 45;
+
+        charts.forEach((chartId, index) => {
+            const canvas = document.getElementById(chartId);
+            const imgData = canvas.toDataURL('image/png');
+            
+            const xPos = index % 2 === 0 ? 10 : 105;
+            doc.addImage(imgData, 'PNG', xPos, yOffset, chartWidth, chartHeight);
+            
+            if (index % 2 !== 0) {
+                yOffset += chartHeight + 5;
+            }
+        });
+
+        // Aviso legal
+        doc.setFontSize(6);
+        doc.setTextColor(100);
+        const avisoLegal = "Este gráfico ilustrativo, protegido pela liberdade de expressão (Art. 5º, IX da CF) e em conformidade com o princípio da transparência (Art. 6º, VI da LGPD), representa cenários hipotéticos baseados em dados agregados e anonimizados, sem constituir previsões definitivas ou comprometer a privacidade individual. "
+                           "Use como ponto de partida para análises aprofundadas. Dados tratados conforme LGPD.";
         
-        const xPos = index % 2 === 0 ? 10 : 105;
-        doc.addImage(imgData, 'PNG', xPos, yOffset, chartWidth, chartHeight);
-        
-        if (index % 2 !== 0) {
-            yOffset += chartHeight + 5;
-        }
+        const splitText = doc.splitTextToSize(avisoLegal, 190);
+        doc.text(splitText, 10, 285);
+
+        doc.save('relatorio_investimentos.pdf');
+    }
+
+    // Event listeners
+    document.getElementById('credito').addEventListener('input', function() {
+        formatarMoeda(this);
     });
 
-    // Aviso legal
-    doc.setFontSize(6);
-    doc.setTextColor(100);
-    const avisoLegal = "Este gráfico ilustrativo, protegido pela liberdade de expressão (Art. 5º, IX da CF) e em conformidade com o princípio da transparência (Art. 6º, VI da LGPD), representa cenários hipotéticos baseados em dados agregados e anonimizados, sem constituir previsões definitivas ou comprometer a privacidade individual"
-                       "Use como ponto de partida para análises aprofundadas. Dados tratados conforme LGPD.";
-    
-    const splitText = doc.splitTextToSize(avisoLegal, 190);
-    doc.text(splitText, 10, 285);
+    document.getElementById('parcela').addEventListener('input', function() {
+        formatarMoeda(this);
+    });
 
-    doc.save('relatorio_investimentos.pdf');
-}
-// Event listeners
-document.getElementById('credito').addEventListener('input', function() {
-    formatarMoeda(this);
-});
+    document.getElementById('valorComparativo').addEventListener('input', function() {
+        formatarMoeda(this);
+    });
 
-document.getElementById('parcela').addEventListener('input', function() {
-    formatarMoeda(this);
-});
+    document.getElementById('calcularButton').addEventListener('click', calcular);
 
-document.getElementById('calcularButton').addEventListener('click', calcular);
-
-// Inicialização
-document.addEventListener('DOMContentLoaded', function() {
-})
-</script>
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', function() {
+        // Qualquer inicialização adicional pode ser colocada aqui
+    });
+    </script>
 </body>
 </html>
