@@ -524,14 +524,17 @@ input[type="number"] {
                 <div class="chart-container">
                     <canvas id="detailedChart"></canvas>
                 </div>
-                <div class="chart-container">
-                    <canvas id="consorcioPizzaChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <canvas id="outrosPizzaChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <canvas id="comparativoPizzaChart"></canvas>
+                <div id="dashboard" style="display: none;">
+                    <!-- ... outros elementos ... -->
+                    <div class="chart-container" style="display: none;">
+                        <canvas id="consorcioPizzaChart"></canvas>
+                    </div>
+                    <div class="chart-container" style="display: none;">
+                        <canvas id="outrosPizzaChart"></canvas>
+                    </div>
+                    <div class="chart-container" style="display: none;">
+                        <canvas id="comparativoPizzaChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1020,19 +1023,31 @@ function saveToPDF() {
 
     // Temporariamente ajusta o tamanho dos gráficos para o PDF
     charts.forEach(chartId => {
-        document.getElementById(chartId).style.width = chartWidth + 'px';
-        document.getElementById(chartId).style.height = chartHeight + 'px';
+        const chart = document.getElementById(chartId);
+        if (chart) {
+            chart.style.width = chartWidth + 'px';
+            chart.style.height = chartHeight + 'px';
+            // Força a atualização do tamanho do canvas
+            chart.width = chartWidth;
+            chart.height = chartHeight;
+            // Redesenha o gráfico com o novo tamanho
+            if (chartInstances[chartId]) {
+                chartInstances[chartId].resize();
+            }
+        }
     });
 
     charts.forEach((chartId, index) => {
         const canvas = document.getElementById(chartId);
-        const imgData = canvas.toDataURL('image/png');
-        
-        const xPos = index % 2 === 0 ? 10 : 105;
-        doc.addImage(imgData, 'PNG', xPos, yOffset, chartWidth, chartHeight);
-        
-        if (index % 2 !== 0) {
-            yOffset += chartHeight + 5;
+        if (canvas) {
+            const imgData = canvas.toDataURL('image/png');
+            
+            const xPos = index % 2 === 0 ? 10 : 105;
+            doc.addImage(imgData, 'PNG', xPos, yOffset, chartWidth, chartHeight);
+            
+            if (index % 2 !== 0) {
+                yOffset += chartHeight + 5;
+            }
         }
     });
 
@@ -1047,10 +1062,20 @@ function saveToPDF() {
 
     doc.save('relatorio_investimentos.pdf');
 
-    // Restaura o tamanho original dos gráficos na tela
+    // Restaura o tamanho original dos gráficos
     charts.forEach(chartId => {
-        document.getElementById(chartId).style.width = '';
-        document.getElementById(chartId).style.height = '';
+        const chart = document.getElementById(chartId);
+        if (chart) {
+            chart.style.width = '';
+            chart.style.height = '';
+            // Restaura o tamanho original do canvas
+            chart.width = chart.offsetWidth;
+            chart.height = chart.offsetHeight;
+            // Redesenha o gráfico com o tamanho original
+            if (chartInstances[chartId]) {
+                chartInstances[chartId].resize();
+            }
+        }
     });
 }
 
