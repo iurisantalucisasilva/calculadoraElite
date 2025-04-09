@@ -978,6 +978,7 @@ function criarGraficoPizza(data, elementId) {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     position: 'top',
@@ -990,7 +991,6 @@ function criarGraficoPizza(data, elementId) {
         }
     });
 }
-
 // Função para salvar o relatório em PDF
 function saveToPDF() {
     const { jsPDF } = window.jspdf;
@@ -1018,6 +1018,12 @@ function saveToPDF() {
     const chartWidth = 90;
     const chartHeight = 45;
 
+    // Temporariamente ajusta o tamanho dos gráficos para o PDF
+    charts.forEach(chartId => {
+        document.getElementById(chartId).style.width = chartWidth + 'px';
+        document.getElementById(chartId).style.height = chartHeight + 'px';
+    });
+
     charts.forEach((chartId, index) => {
         const canvas = document.getElementById(chartId);
         const imgData = canvas.toDataURL('image/png');
@@ -1040,6 +1046,12 @@ function saveToPDF() {
     doc.text(splitText, 10, 285);
 
     doc.save('relatorio_investimentos.pdf');
+
+    // Restaura o tamanho original dos gráficos na tela
+    charts.forEach(chartId => {
+        document.getElementById(chartId).style.width = '';
+        document.getElementById(chartId).style.height = '';
+    });
 }
 
 // Event listeners
